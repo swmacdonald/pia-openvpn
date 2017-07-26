@@ -118,4 +118,4 @@ docker run ... -p 80:80 -e LOCAL_NETWORK=192.168.1.0/24 --net=pia_network --name
 docker run ... --net=container:pia --name=myservice myservice
 ```
 
-This is inspired from [haugene/docker-transmission-openvpn](https://github.com/haugene/docker-transmission-openvpn).
+This is inspired by [haugene/docker-transmission-openvpn](https://github.com/haugene/docker-transmission-openvpn).
