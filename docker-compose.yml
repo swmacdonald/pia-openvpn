@@ -1,0 +1,22 @@
+version: '3.3'
+services:
+    pia_openvpn:
+        ports:
+            - '80:80'
+            - '5050:5050'
+            - '8080:8080'
+            - '8081:8081'
+            - '8989:8989'
+            - '9010:9010'
+        privileged: true
+        devices:
+            - /dev/net/tun
+        container_name: pia_openvpn
+        dns:
+            - 209.222.18.222
+            - 209.222.18.218
+        environment:
+            - LOCAL_NETWORK=192.168.5.0/24
+        volumes:
+            - '/data/piacfg/auth.conf:/etc/openvpn/auth.conf:Z'
+        image: 'pia_openvpn:0.6'
