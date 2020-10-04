@@ -2,11 +2,11 @@ version: '3.3'
 services:
     pia_openvpn:
         ports:
-            - '80:80'
+    #        - '80:80'
             - '5050:5050'
             - '8080:8080'
             - '8081:8081'
-            - '8989:8989'
+    #        - '8989:8989'
             - '9010:9010'
         privileged: true
         devices:
@@ -20,3 +20,45 @@ services:
         volumes:
             - '/data/piacfg/auth.conf:/etc/openvpn/auth.conf:Z'
         image: 'pia_openvpn:0.6'
+
+    sonarr:
+      container_name: sonarr
+      image: linuxserver/sonarr:latest
+      restart: unless-stopped
+      network_mode: service:pia_openvpn  
+      environment:
+        - PUID=1111 # default user id, defined in .env
+        - PGID=500 # default group id, defined in .env
+        - TZ=${TZ} # timezone, defined in .env
+      volumes:
+        - /etc/localtime:/etc/localtime:ro
+        - /data/sonarr/config/sonarr:/config # config files
+        - /data/tv:/tv # tv shows folder
+        - /data/sonarr/downloads:/downloads # download folder
+
+    web:
+      image: dperson/nginx
+      depends_on:
+        - sonarr
+      environment:
+        TZ: 'EST5EDT'
+      links:
+        - pia_openvpn:sonarr
+      networks:
+        - default
+      ports:
+        - "80:80"
+        - "443:443"
+      read_only: true
+      tmpfs:
+        - /run
+        - /tmp
+        - /var/cache/nginx
+      restart: unless-stopped
+      stdin_open: true
+      tty: true
+      command: -w "http://sonarr:8989;/sonarr"
+    # service1 shares the network stack of vpn. The service can by reached using
+    #     # the name of the service as a hostname.
+    #networks:
+    # default:
