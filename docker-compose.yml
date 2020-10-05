@@ -1,13 +1,13 @@
 version: '3.3'
 services:
     pia_openvpn:
-        ports:
-            - '80:80'
-            - '5050:5050'
-            - '8080:8080'
-            - '8081:8081'
-            - '8989:8989'
-            - '9010:9010'
+    #    ports:
+    #        - '80:80'
+    #        - '5050:5050'
+    #        - '8080:8080'
+    #        - '8081:8081'
+    #        - '8989:8989'
+    #        - '9010:9010'
         privileged: true
         devices:
             - /dev/net/tun
@@ -20,3 +20,109 @@ services:
         volumes:
             - '/data/piacfg/auth.conf:/etc/openvpn/auth.conf:Z'
         image: 'pia_openvpn:0.6'
+
+    sonarr:
+      container_name: sonarr
+      image: linuxserver/sonarr:latest
+      depends_on:
+        - pia_openvpn
+      restart: unless-stopped
+      network_mode: service:pia_openvpn  
+      environment:
+        - PUID=1004 # default user id, defined in .env
+        - PGID=1001 # default group id, defined in .env
+        - TZ='PST8PDT' # timezone, defined in .env
+      volumes:
+        - /etc/localtime:/etc/localtime:ro
+        - /data/sonarr/config/sonarr:/config # config files
+        - /data/tv:/tv # tv shows folder
+        - /data/sabnzbd/complete:/downloads # download folder
+
+    sabnzbd:
+      image: linuxserver/sabnzbd
+      depends_on:
+        - pia_openvpn
+      container_name: sabnzbd
+      network_mode: service:pia_openvpn
+      environment:
+        - PUID=1004
+        - PGID=1001
+        - TZ=America/Los_Angeles
+      volumes:
+        - /data/sabnzbd:/config
+        - /data/sabnzbd/complete:/downloads
+        - /data/sabnzbd/incomplete/downloads:/incomplete-downloads #optional
+    #  ports:
+    #    - 8080:8080
+    #    - 9090:9090
+      restart: unless-stopped
+
+
+    web:
+      image: dperson/nginx
+      depends_on:
+        - pia_openvpn
+      environment:
+        TZ: 'PST8PDT'
+      links:
+        - pia_openvpn:sonarr
+        - pia_openvpn:sabnzbd
+        - pia_openvpn:bazarr
+        - pia_openvpn:radarr
+      networks:
+        - default
+      ports:
+        - "80:80"
+        - "443:443"
+      read_only: true
+      tmpfs:
+        - /run
+        - /tmp
+        - /var/cache/nginx
+      restart: unless-stopped
+      stdin_open: true
+      tty: true
+      command: -w "http://sonarr:8989;/sonarr" -w "http://sabnzbd:8080;/sabnzbd" -w "http://bazarr:6767;/bazarr" -w "http://radarr:7878;/radarr"
+    # service1 shares the network stack of vpn. The service can by reached using
+    #     # the name of the service as a hostname.
+    #networks:
+    # default:
+    #
+
+    bazarr:
+      container_name: bazarr
+      image: linuxserver/bazarr
+      depends_on:
+        - pia_openvpn
+      restart: unless-stopped
+      network_mode: service:pia_openvpn
+      environment:
+        - PUID=1004 # default user id, defined in .env
+        - PGID=1001 # default group id, defined in .env
+        - TZ='PST8PDT' # timezone, defined in .env
+        - UMASK_SET=022 #optional
+      volumes:
+        - /data/bazarr:/config # config files
+        - /data/movies:/movies # movies folder
+        - /data/tv:/tv # tv shows folder
+  #    ports:
+  #      - 6767:6767
+
+    radarr:
+      container_name: radarr
+      image: linuxserver/radarr:latest
+      depends_on:
+        - pia_openvpn
+      restart: unless-stopped
+      network_mode: service:pia_openvpn
+      environment:
+        - PUID=1004 # default user id, defined in .env
+        - PGID=1001 # default group id, defined in .env
+        - TZ='PST8PDT' # timezone, defined in .env
+      volumes:
+        - /etc/localtime:/etc/localtime:ro
+        - /data/radarr:/config # config files
+        - /data/movies:/movies # movies folder
+        - /data/sabnzbd/complete:/downloads # download folder
+
+
